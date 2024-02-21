@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Visualization</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<body>
+    <div class="container">
+        <!-- Data -->
+        <h2>Snowsense</h2>
+                <!-- Loop through your data and display it here -->
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Lokasjon</th>
+                            <th>Tid</th>
+                            <th>Temperatur</th>
+                            <th>Vind</th>
+                            <th>SND cm</th>
+                            <th>cm/12h</th>
+                            <th>cm/24h</th>
+                            <th>MTP@cm</th>
+                            <th>ATP@cm</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td id="location"></td>
+                            <td id="time"></td>
+                            <td id="temperature"></td>
+                            <td id="wind"></td>
+                            <td id="snowdepth"></td>
+                            <td id="snowdepth_12h"></td>
+                            <td id="snowdepth_24h"></td>
+                            <td id="snowdepth_mtp"></td>
+                            <td id="snowdepth_atp"></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+        <!-- First Graph -->
+        <h2>Vær fra YR</h2>
+        <div id="graph1"></div>
+
+        <!-- Second Graph -->
+        <h2>Stasjonsdata</h2>
+        <div id="graph2"></div>
+        <div id="graph3"></div>
+        <div id="windrose"></div>
+        <div id="windrose3"></div>
+        <div id="graf"></div>
+        <div><img src="{{ yrsvg1 }}" alt="YR"></div>
+
+    </div>
+
+</body>
+<script>
+    window.onload = function() {
+        fetch('{% url "get_snowsense" %}')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // For debugging purposes
+                // Update the table with the snowsense data
+                document.getElementById('location').textContent = data.snowsense_data[0];
+                document.getElementById('time').textContent = data.snowsense_data[1];
+                document.getElementById('temperature').textContent = data.snowsense_data[2];
+                document.getElementById('wind').textContent = data.snowsense_data[3];
+                document.getElementById('snowdepth').textContent = data.snowsense_data[4];
+                document.getElementById('snowdepth_12h').textContent = data.snowsense_data[5];
+                document.getElementById('snowdepth_24h').textContent = data.snowsense_data[6];
+                document.getElementById('snowdepth_mtp').textContent = data.snowsense_data[7];
+                document.getElementById('snowdepth_atp').textContent = data.snowsense_data[8];
+                // ... (update the rest of the table cells)
+            })
+        fetch('{% url "get_graph1" %}')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // For debugging purposes
+
+                // Plot the first graph
+                var graph1 = document.getElementById('graph1');
+                Plotly.newPlot(graph1, data.fig_json);
+            })
+        fetch('{% url "get_graph2" %}')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // For debugging
+
+
+                var graph2 = document.getElementById('graph2');
+                Plotly.newPlot(graph2, data.graph2);
+            })
+            .catch(error => console.error('Error:', error));
+        fetch('{% url "get_graph3" %}')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // For debugging purposes
+
+                var graph3 = document.getElementById('graph3');
+                Plotly.newPlot(graph3, data.graph3);
+            })
+            .catch(error => console.error('Error:', error));
+        fetch('{% url "get_windrose" %}')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // For debugging
+
+                    var graph3 = document.getElementById('windrose');
+                Plotly.newPlot(windrose, data.windrose);
+            })
+        .catch(error => console.error('Error:', error));
+        fetch('{% url "get_windrose3" %}')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // For debugging
+
+                    var graph3 = document.getElementById('windrose3');
+                Plotly.newPlot(windrose3, data.vindrose);
+            })
+        fetch('{% url "lag_graf" %}')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // For debugging
+
+                    var graph3 = document.getElementById('windrose3');
+                Plotly.newPlot(graf, data.graf);
+        })
+
+    };
+</script>
+</html>
+

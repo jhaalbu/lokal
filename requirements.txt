@@ -1,0 +1,5 @@
+metno-locationforecast
+pandas
+matplotlib
+plotly
+numpy
