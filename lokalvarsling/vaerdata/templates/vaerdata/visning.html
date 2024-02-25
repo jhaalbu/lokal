@@ -1,0 +1,47 @@
+{% extends 'vaerdata/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Værmeteogrammer</h2>
+    <div class="row">
+        {% for meteogram in metogrammer %}
+        <div class="col-lg-6 col-md-4 col-lg-3 mb-4">
+            <img src="{{ meteogram.url }}" class="img-fluid" alt="Meteogram">
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>Værstasjonsplot</h2>
+    <div class="row">
+        {% for plot_url in ploturls %}
+        <div class="col-12 mb-4">
+            <div class="plot-container" data-plot-url="{{ plot_url }}" ></div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>Webkamera Bilder</h2>
+    <div class="row">
+        {% for bilde in webkameraer %}
+        <div class="col-lg-6 col-md-4 col-lg-3 mb-4">
+            <a href="{{ bilde.url }}">
+                <img src="{{ bilde.url }}" class="img-fluid" alt="Webkamera Bilde">
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.plot-container').forEach(function(container) {
+            const plotUrl = container.getAttribute('data-plot-url');
+            fetch(plotUrl)
+                .then(response => response.json())
+                .then(data => {
+                    Plotly.newPlot(container, data.fig_json);
+                });
+        });
+    });
+</script>
+{% endblock %}

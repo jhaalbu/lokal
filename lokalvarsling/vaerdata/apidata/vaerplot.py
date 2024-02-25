@@ -1,14 +1,16 @@
 import plotly.graph_objects as go
 import plotly.io as pio
 import plotly.utils as pu
+from plotly.subplots import make_subplots
 from metno_locationforecast import Place, Forecast
-from .met import metno_temperatur, metno_nedbør
+from .met import metno_temperatur, metno_nedbør, metno_vind, metno_vindretning
 from .stasjon import frost_api, vindrose, bearbeid_frost, frost_samledf
 import json
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 import numpy as np
 import pandas as pd
+from math import pi, cos, sin
 
 user_agent = "Stedspesifikk v/0.1 jan.helge.aalbu@vegvesen.no"
 
@@ -370,7 +372,7 @@ def met_og_ein_stasjon_plot(lat, lon, navn, altitude, stasjonsid, elements, dage
     time_nebør, nedbør = metno_nedbør(vaer_forecast, dager_etter_met)
     nedbør_cumsum = np.cumsum(nedbør).tolist()
     time_temperatur, met_temperatur = metno_temperatur(vaer_forecast, dager_etter_met)
-
+    print(f'elements: {elements}')
     df = frost_api(stasjonsid, dager_tidligere_frost, elements, timeoffsets='PT0H')
     df_bearbeida = bearbeid_frost(df)
     samledf = frost_samledf(df_bearbeida)
@@ -397,6 +399,7 @@ def met_og_ein_stasjon_plot(lat, lon, navn, altitude, stasjonsid, elements, dage
                              fillcolor='rgba(0, 0, 255, 0.1)', yaxis='y3'))
 
     # Plotting other data from the samledf DataFrame
+    print(samledf)
     fig.add_trace(go.Bar(x=samledf.index, y=samledf['sum(precipitation_amount PT10M)'],
                          name='Nedbør', width=1000 * 3600, yaxis='y2', marker_color=precipitation_color))
 
@@ -438,5 +441,255 @@ def met_og_ein_stasjon_plot(lat, lon, navn, altitude, stasjonsid, elements, dage
 
     # Add annotations if necessary
     # e.g., fig.add_annotation(x=..., y=..., text='Annotation', showarrow=True, arrowhead=1)
+
+    return fig
+
+def met_stasjon_supblot(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met=1, dager_tidligere_frost=3):   
+    vaer = Place(navn, lat, lon, altitude)
+    vaer_forecast = Forecast(vaer, user_agent)
+    vaer_forecast.update()
+    time_nebør, nedbør = metno_nedbør(vaer_forecast, dager_etter_met)
+    nedbør_cumsum = np.cumsum(nedbør).tolist()
+    time_temperatur, met_temperatur = metno_temperatur(vaer_forecast, dager_etter_met)
+
+    positive_temperature = np.where(np.array(met_temperatur) > -0.5, met_temperatur, np.nan)
+    negative_temperature = np.where(np.array(met_temperatur) < 0.5, met_temperatur, np.nan)
+
+    time_vind, met_vind = metno_vind(vaer_forecast, dager_etter_met)
+
+    print(f'elements: {elements}')
+    df = frost_api(stasjonsid, dager_tidligere_frost, elements, timeoffsets='PT0H')
+    print(df)
+    df_bearbeida = bearbeid_frost(df)
+    samledf = frost_samledf(df_bearbeida)
+    #print(samledf)
+    df_resampled = samledf.resample('3H').mean()
+
+    positive_temperature_frost = np.where(samledf['air_temperature'] > 0, samledf['air_temperature'], np.nan)
+    negative_temperature_frost = np.where(samledf['air_temperature'] <= 0, samledf['air_temperature'], np.nan)
+
+
+    # Define a color palette
+    temperature_color = 'rgba(255, 165, 0, 0.8)'  # orange
+    precipitation_color = 'rgba(0, 123, 255, 0.8)'  # blue
+    wind_color = 'rgba(178, 39, 245, 0.8)'  # lilla
+
+    # Create the figure
+    fig = go.Figure()
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.01, row_heights=[0.6, 0.4], specs=[[{"secondary_y": True}], [{"secondary_y": True}]])
+    # Plotting precipitation from YR
+    fig.add_trace(go.Bar(x=time_nebør, y=nedbør, name='Nedbør (YR)', width=1000 * 3600,
+                         marker_color=precipitation_color), row=1, col=1, secondary_y=True)
+
+    # Plotting temperature from YR
+    fig.add_trace(go.Scatter(
+        x=time_temperatur, y=positive_temperature, mode='lines',
+        name='Temperatur(YR)', line=dict(color='red', dash='dot')), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=time_temperatur, y=negative_temperature, mode='lines',
+        name='Temperatur  (YR)', line=dict(color='blue', dash='dot')), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=time_vind, y=met_vind, mode='lines',
+                             name='Vind (YR)', line=dict(color=wind_color, dash='dot')), row=2, col=1)
+    
+    # fig.add_trace(go.Scatter(x=time_vindretning, y=met_vindretning, mode='lines',
+    #                          name='Vindretning (YR)', line=dict(color=wind_color)), row=2, col=1, secondary_y=True)
+
+    # Plotting cumulative precipitation from YR
+    # fig.add_trace(go.Scatter(x=time_nebør, y=nedbør_cumsum, mode='lines+markers',
+    #                          name='Kumulativ nedbør (YR)', fill='tozeroy', 
+    #                          fillcolor='rgba(0, 0, 255, 0.1)'), row=1, col=1)
+
+    # Plotting other data from the samledf DataFrame
+    fig.add_trace(go.Bar(x=samledf.index, y=samledf['sum(precipitation_amount PT10M)'],
+                         name='Nedbør', width=1000 * 3600, marker_color=precipitation_color), row=1, col=1, secondary_y=True)
+
+    # fig.add_trace(go.Scatter(x=samledf.index, y=samledf['air_temperature'], name='Temperatur',
+    #                          mode='lines', line=dict(color=temperature_color)), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=samledf.index, y=positive_temperature_frost, mode='lines',
+        name='Temperatur - målt', line=dict(color='red')), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=samledf.index, y=negative_temperature_frost, mode='lines',
+        name='Temperatur - målt', line=dict(color='blue')), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=samledf.index, y=samledf['wind_speed'], name='Vindhastighet',
+                             mode='lines', line=dict(color=wind_color)), row=2, col=1) 
+    
+    # fig.add_trace(go.Scatter(x=samledf.index, y=samledf['wind_from_direction'], name='Vindretning',
+    #                          mode='lines', line=dict(color=wind_color)), row=2, col=1, secondary_y=True)
+
+
+    fig.update_xaxes(showticklabels=False, showgrid=True, row=1, col=1)
+    fig.update_xaxes(showticklabels=True, showgrid=True, row=2, col=1)
+
+    # Update the layout to incorporate the design principles
+    fig.update_yaxes(title_text='Temperatur', title_font=dict(size=12, color='red'),
+                    tickfont=dict(size=12, color='red'),showgrid=True, row=1, col=1)
+
+    # Secondary y-axis for the first subplot (precipitation)
+    fig.update_yaxes(title_text='Nedbør (mm)', title_font=dict(size=12, color=precipitation_color),
+                    tickfont=dict(size=12, color=precipitation_color), row=1, col=1,showgrid=False , secondary_y=True, range=[0, 8])
+
+    # y-axis for the second subplot (wind)
+    fig.update_yaxes(title_text='Vindhastighet (m/s)', title_font=dict(size=12, color=wind_color),
+                    tickfont=dict(size=12, color=wind_color), row=2, col=1)
+    # fig.update_yaxes(title_text='Vindretning', title_font=dict(size=14, color=wind_color),
+    #                 tickfont=dict(size=12, color=wind_color), row=2, col=1, secondary_y=True)
+
+    for time, row in df_resampled.iterrows():
+        radian = row['wind_from_direction'] * (pi / 180)
+        fig.add_annotation(
+            x=time,
+            y=0,  # Sett en passende y-posisjon for pilene dine
+            showarrow=True,
+            arrowhead=1,
+            arrowsize=1,
+            arrowwidth=1,
+            arrowcolor='black',
+            ax=20 * cos(radian),
+            ay=20 * sin(radian),
+            row=2, col=1  #  * -1 Plotly's koordinatsystem er invertert for y
+        )
+
+    fig.update_layout(
+        title={
+        'text': f"{navn} - {altitude} moh. - ID: {stasjonsid}",
+        'y':0.9,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'
+    },
+    title_font=dict(
+        family="Arial, sans-serif",
+        size=24,
+        color="black"
+    ),width=800, 
+    height=500, 
+    showlegend=False)
+
+    return fig
+
+def met_stasjon_supblot_u_nedbor(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met=1, dager_tidligere_frost=3):   
+    vaer = Place(navn, lat, lon, altitude)
+    vaer_forecast = Forecast(vaer, user_agent)
+    vaer_forecast.update()
+
+    time_temperatur, met_temperatur = metno_temperatur(vaer_forecast, dager_etter_met)
+
+    positive_temperature = np.where(np.array(met_temperatur) > -0.5, met_temperatur, np.nan)
+    negative_temperature = np.where(np.array(met_temperatur) < 0.5, met_temperatur, np.nan)
+
+    time_vind, met_vind = metno_vind(vaer_forecast, dager_etter_met)
+
+    print(f'elements: {elements}')
+    df = frost_api(stasjonsid, dager_tidligere_frost, elements, timeoffsets='PT0H')
+    print(df)
+    df_bearbeida = bearbeid_frost(df)
+    samledf = frost_samledf(df_bearbeida)
+    #print(samledf)
+    df_resampled = samledf.resample('3H').mean()
+
+    positive_temperature_frost = np.where(samledf['air_temperature'] > 0, samledf['air_temperature'], np.nan)
+    negative_temperature_frost = np.where(samledf['air_temperature'] <= 0, samledf['air_temperature'], np.nan)
+
+
+    # Define a color palette
+    temperature_color = 'rgba(255, 165, 0, 0.8)'  # orange
+    precipitation_color = 'rgba(0, 123, 255, 0.8)'  # blue
+    wind_color = 'rgba(178, 39, 245, 0.8)'  # lilla
+
+    # Create the figure
+    fig = go.Figure()
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.01, row_heights=[0.6, 0.4], specs=[[{"secondary_y": True}], [{"secondary_y": True}]])
+    # Plotting precipitation from YR
+
+    # Plotting temperature from YR
+    fig.add_trace(go.Scatter(
+        x=time_temperatur, y=positive_temperature, mode='lines',
+        name='Temperatur(YR)', line=dict(color='red', dash='dot')), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=time_temperatur, y=negative_temperature, mode='lines',
+        name='Temperatur  (YR)', line=dict(color='blue', dash='dot')), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=time_vind, y=met_vind, mode='lines',
+                             name='Vind (YR)', line=dict(color=wind_color, dash='dot')), row=2, col=1)
+    
+    # fig.add_trace(go.Scatter(x=time_vindretning, y=met_vindretning, mode='lines',
+    #                          name='Vindretning (YR)', line=dict(color=wind_color)), row=2, col=1, secondary_y=True)
+
+    # Plotting cumulative precipitation from YR
+    # fig.add_trace(go.Scatter(x=time_nebør, y=nedbør_cumsum, mode='lines+markers',
+    #                          name='Kumulativ nedbør (YR)', fill='tozeroy', 
+    #                          fillcolor='rgba(0, 0, 255, 0.1)'), row=1, col=1)
+
+    # Plotting other data from the samledf DataFrame
+
+
+    # fig.add_trace(go.Scatter(x=samledf.index, y=samledf['air_temperature'], name='Temperatur',
+    #                          mode='lines', line=dict(color=temperature_color)), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=samledf.index, y=positive_temperature_frost, mode='lines',
+        name='Temperatur - målt', line=dict(color='red')), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=samledf.index, y=negative_temperature_frost, mode='lines',
+        name='Temperatur - målt', line=dict(color='blue')), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=samledf.index, y=samledf['wind_speed'], name='Vindhastighet',
+                             mode='lines', line=dict(color=wind_color)), row=2, col=1) 
+    
+    # fig.add_trace(go.Scatter(x=samledf.index, y=samledf['wind_from_direction'], name='Vindretning',
+    #                          mode='lines', line=dict(color=wind_color)), row=2, col=1, secondary_y=True)
+
+
+    fig.update_xaxes(showticklabels=False, showgrid=True, row=1, col=1)
+    fig.update_xaxes(showticklabels=True, showgrid=True, row=2, col=1)
+
+    # Update the layout to incorporate the design principles
+    fig.update_yaxes(title_text='Temperatur', title_font=dict(size=12, color='red'),
+                    tickfont=dict(size=12, color='red'),showgrid=True, row=1, col=1)
+
+    # Secondary y-axis for the first subplot (precipitation)
+
+    # y-axis for the second subplot (wind)
+    fig.update_yaxes(title_text='Vindhastighet (m/s)', title_font=dict(size=12, color=wind_color),
+                    tickfont=dict(size=12, color=wind_color), row=2, col=1)
+    # fig.update_yaxes(title_text='Vindretning', title_font=dict(size=14, color=wind_color),
+    #                 tickfont=dict(size=12, color=wind_color), row=2, col=1, secondary_y=True)
+
+    for time, row in df_resampled.iterrows():
+        radian = row['wind_from_direction'] * (pi / 180)
+        fig.add_annotation(
+            x=time,
+            y=0,  # Sett en passende y-posisjon for pilene dine
+            showarrow=True,
+            arrowhead=1,
+            arrowsize=1,
+            arrowwidth=1,
+            arrowcolor='black',
+            ax=20 * cos(radian),
+            ay=20 * sin(radian),
+            row=2, col=1  #  * -1 Plotly's koordinatsystem er invertert for y
+        )
+
+    fig.update_layout(
+        title={
+        'text': f"{navn} - {altitude} moh. - ID: {stasjonsid}",
+        'y':0.9,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'
+    },
+    title_font=dict(
+        family="Arial, sans-serif",
+        size=24,
+        color="black"
+    ),width=800, 
+    height=500, 
+    showlegend=False)
 
     return fig

@@ -5,3 +5,4 @@ plotly
 numpy
 requests
 beautifulsoup4
+pyproj

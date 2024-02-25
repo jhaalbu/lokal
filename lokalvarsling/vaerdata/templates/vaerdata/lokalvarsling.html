@@ -87,22 +87,7 @@
 <!-- <script src="https://stackpath.bootstrapcdn.com/bootstrap/js/bootstrap.bundle.min.js"></script> -->
 <script>
     window.onload = function() {
-        fetch('{% url "get_snowsense" %}')
-            .then(response => response.json())
-            .then(data => {
-                console.log(data); // For debugging purposes
-                // Update the table with the snowsense data
-                document.getElementById('location').textContent = data.snowsense_data[0];
-                document.getElementById('time').textContent = data.snowsense_data[1];
-                document.getElementById('temperature').textContent = data.snowsense_data[2];
-                document.getElementById('wind').textContent = data.snowsense_data[3];
-                document.getElementById('snowdepth').textContent = data.snowsense_data[4];
-                document.getElementById('snowdepth_12h').textContent = data.snowsense_data[5];
-                document.getElementById('snowdepth_24h').textContent = data.snowsense_data[6];
-                document.getElementById('snowdepth_mtp').textContent = data.snowsense_data[7];
-                document.getElementById('snowdepth_atp').textContent = data.snowsense_data[8];
-                // ... (update the rest of the table cells)
-            })
+
         fetch('{% url "vindrose_stasjon_data" %}')
             .then(response => response.json())
             .then(data => {
@@ -112,7 +97,7 @@
                 var graph1 = document.getElementById('vindrose1');
                 Plotly.newPlot(vindrose1, data.fig_json);
             })
-        fetch('{% url "met_frost_plot1" %}')
+        fetch('{% url "stasjon_1" %}')
             .then(response => response.json())
             .then(data => {
                 console.log(data); // For debugging purposes
