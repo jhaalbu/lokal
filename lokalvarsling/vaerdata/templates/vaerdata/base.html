@@ -8,13 +8,12 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        .container {
+        .container, .container-fluid {
             max-width: 90%; 
         }
-
-
-        .container-fluid {
-            max-width: 90%; 
+        .plot-container {
+            min-width: 800px; /* Ensures the plot does not get smaller than this */
+            width: 90%;
         }
     </style>
 </head>

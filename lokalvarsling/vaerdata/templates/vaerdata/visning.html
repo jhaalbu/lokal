@@ -14,8 +14,8 @@
     <h2>Værstasjonsplot</h2>
     <div class="row">
         {% for plot_url in ploturls %}
-        <div class="col-12 mb-4">
-            <div class="plot-container" data-plot-url="{{ plot_url }}" ></div>
+        <div class="col-12 mb-4"> <!-- More responsive column sizes -->
+            <div class="plot-container" data-plot-url="{{ plot_url }}"></div>
         </div>
         {% endfor %}
     </div>
