@@ -56,6 +56,7 @@ def stasjon(request, stasjonid):
     sensor_names = [sensor.name for sensor in stasjon.sensor_elements.all()]
     print(f'stasjonstype: {stasjonstype}')
     if stasjonstype == 'snodybde':
+        print(f'stasjonstype: {stasjonstype}')
         print(f'stasjon {stasjon.navn} er inne i if-statement')
         fig = met_stasjon_supblot(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names)
         fig_json = json.loads(fig.to_json())
@@ -63,12 +64,16 @@ def stasjon(request, stasjonid):
             'fig_json': fig_json
         })
     if stasjonstype == 'nedbor':
+        print(f'stasjonstype: {stasjonstype}')
+        print(f'stasjon {stasjon.navn} er inne i if-statement')
         fig = met_stasjon_supblot_u_nedbor(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names)
         fig_json = json.loads(fig.to_json())
         return JsonResponse({
             'fig_json': fig_json
         })
     if stasjonstype == 'vind':
+        print(f'stasjonstype: {stasjonstype}')
+        print(f'stasjon {stasjon.navn} er inne i if-statement')
         fig = met_stasjon_supblot_u_nedbor(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names)
         fig_json = json.loads(fig.to_json())
         return JsonResponse({
