@@ -55,7 +55,7 @@ def stasjon(request, stasjonid):
     stasjonstype = stasjon.beskrivelse
     sensor_names = [sensor.name for sensor in stasjon.sensor_elements.all()]
     print(f'stasjonstype: {stasjonstype}')
-    if stasjonstype == 'snødybde' or stasjonstype == 'nedbør':
+    if stasjonstype == 'snodybde' or stasjonstype == 'nedbor':
         print(f'stasjon {stasjon.navn} er inne i if-statement')
         fig = met_stasjon_supblot(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names)
         fig_json = json.loads(fig.to_json())
