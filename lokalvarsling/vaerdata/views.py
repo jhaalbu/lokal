@@ -63,15 +63,15 @@ def stasjon(request, stasjonid):
         return JsonResponse({
             'fig_json': fig_json
         })
-    if stasjonstype == 'nedbor':
+    elif stasjonstype == 'nedbor':
         print(f'stasjonstype: {stasjonstype}')
         print(f'stasjon {stasjon.navn} er inne i if-statement')
-        fig = met_stasjon_supblot_u_nedbor(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names)
+        fig = met_stasjon_supblot(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names)
         fig_json = json.loads(fig.to_json())
         return JsonResponse({
             'fig_json': fig_json
         })
-    if stasjonstype == 'vind':
+    elif stasjonstype == 'vind':
         print(f'stasjonstype: {stasjonstype}')
         print(f'stasjon {stasjon.navn} er inne i if-statement')
         fig = met_stasjon_supblot_u_nedbor(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names)
