@@ -286,7 +286,7 @@ def vindrose_stasjon(stasjonsid, dager_tidligere):
     
     fig.update_traces(text=['Nord','N-Ø', 'Øst', 'S-Ø', 'Sør', 'S-V', 'Vest', 'N-V'])
     fig.update_layout(
-        title='Vindrose for siste døgn, stasjon ' + str(stasjonsid),
+        title='Vind siste døgn,  ' + str(stasjonsid),
         font_size=16,
         legend_font_size=16,
         polar_radialaxis_ticksuffix='%',
@@ -444,7 +444,7 @@ def met_og_ein_stasjon_plot(lat, lon, navn, altitude, stasjonsid, elements, dage
 
     return fig
 
-def met_stasjon_supblot(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met=1, dager_tidligere_frost=3):   
+def met_stasjon_supblot(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met=2, dager_tidligere_frost=3):   
     vaer = Place(navn, lat, lon, altitude)
     vaer_forecast = Forecast(vaer, user_agent)
     vaer_forecast.update()
@@ -465,8 +465,8 @@ def met_stasjon_supblot(lat, lon, navn, altitude, stasjonsid, elements, dager_et
     #print(samledf)
     df_resampled = samledf.resample('3H').mean()
 
-    positive_temperature_frost = np.where(samledf['air_temperature'] > 0, samledf['air_temperature'], np.nan)
-    negative_temperature_frost = np.where(samledf['air_temperature'] <= 0, samledf['air_temperature'], np.nan)
+    positive_temperature_frost = np.where(samledf['air_temperature'] > -0.5, samledf['air_temperature'], np.nan)
+    negative_temperature_frost = np.where(samledf['air_temperature'] <= 0.5, samledf['air_temperature'], np.nan)
 
 
     # Define a color palette
@@ -566,13 +566,13 @@ def met_stasjon_supblot(lat, lon, navn, altitude, stasjonsid, elements, dager_et
         family="Arial, sans-serif",
         size=24,
         color="black"
-    ),width=800, 
+    ),width=900, 
     height=500, 
     showlegend=False)
 
     return fig
 
-def met_stasjon_supblot_u_nedbor(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met=1, dager_tidligere_frost=3):   
+def met_stasjon_supblot_u_nedbor(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met=2, dager_tidligere_frost=3):   
     vaer = Place(navn, lat, lon, altitude)
     vaer_forecast = Forecast(vaer, user_agent)
     vaer_forecast.update()
@@ -592,8 +592,8 @@ def met_stasjon_supblot_u_nedbor(lat, lon, navn, altitude, stasjonsid, elements,
     #print(samledf)
     df_resampled = samledf.resample('3H').mean()
 
-    positive_temperature_frost = np.where(samledf['air_temperature'] > 0, samledf['air_temperature'], np.nan)
-    negative_temperature_frost = np.where(samledf['air_temperature'] <= 0, samledf['air_temperature'], np.nan)
+    positive_temperature_frost = np.where(samledf['air_temperature'] > -0.5, samledf['air_temperature'], np.nan)
+    negative_temperature_frost = np.where(samledf['air_temperature'] <= 0.5, samledf['air_temperature'], np.nan)
 
 
     # Define a color palette

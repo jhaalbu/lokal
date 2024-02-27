@@ -92,6 +92,7 @@ def bearbeid_frost(df):
 
 def frost_samledf(df):
     df_pivot = df.pivot(index='referenceTime', columns='elementId', values='value')
+
     return df_pivot
 
 
@@ -156,7 +157,7 @@ def vindrose(stasjonsid, dager_tidligere):
     # Sorting by index is not needed since reindexing has already ordered the index as per `direction_order`
 
     # Printing the pivot_df for verification
-    print(pivot_df)
+    #print(pivot_df)
 
     return pivot_df
 

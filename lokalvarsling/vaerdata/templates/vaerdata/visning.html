@@ -20,6 +20,15 @@
         {% endfor %}
     </div>
 
+    <h2>Vindroser</h2>
+    <div class="row">
+        {% for ploturl__vindrose in ploturls__vindrose %}
+        <div class="col-lg-6 col-md-4 col-lg-3 mb-4"> <!-- More responsive column sizes -->
+            <div class="plot-container" data-plot-url="{{ ploturl__vindrose }}"></div>
+        </div>
+        {% endfor %}
+    </div>
+
     <h2>Webkamera Bilder</h2>
     <div class="row">
         {% for bilde in webkameraer %}

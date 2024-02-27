@@ -6,6 +6,8 @@ class Omrade(models.Model):
     klimapunkter = models.ManyToManyField('Klimapunkt', related_name='omrader', blank=True)  # Use 'omrader' here for reverse access'
     webkameraer = models.ManyToManyField('Webkamera', related_name='omrader', blank=True)  # Use 'omrader' here for reverse access'
     metogrammer = models.ManyToManyField('Metogram', related_name='omrader', blank=True)  # Use 'omrader' here for reverse access'
+    vindroser = models.ManyToManyField('Vindrose', related_name='omrader', blank=True)  # Use 'omrader' here for reverse access'
+    
     def __str__(self):
         return self.navn
 
@@ -49,3 +51,9 @@ class Metogram(models.Model):
 
     def __str__(self):
         return self.navn
+    
+class Vindrose(models.Model):
+    stasjon = models.ForeignKey(Stasjon, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f'{self.stasjon.navn}'
