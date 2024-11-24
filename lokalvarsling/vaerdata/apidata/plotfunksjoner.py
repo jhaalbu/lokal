@@ -2,6 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from math import pi, cos, sin
+import math
 from metno_locationforecast import Place, Forecast
 from .met import metno_forecast_to_dataframe
 from .stasjon import frost_api, vindrose, bearbeid_frost, frost_samledf, hent_stasjonsinfo
@@ -127,8 +128,8 @@ def legg_til_frost_precipitation(fig, samledf, row, col):
         y=samledf['sum(precipitation_amount PT10M)'],
         name='Nedbør (Frost)',
         width=1000 * 3600,
-        marker_color='rgba(0, 123, 255, 0.8)'
-    ), row=row, col=col, secondary_y=True)
+        marker_color='rgba(0, 123, 255, 0.8)'),
+        row=row, col=col, secondary_y=True)
 
     return fig
 
@@ -211,7 +212,8 @@ def legg_til_frost_wind(fig, samledf, row, col):
         title_font=dict(size=12, color='purple'),
         tickfont=dict(size=12, color='purple'),
         row=row, col=col,
-        showgrid=True
+        showgrid=True,
+        range=[0,30]
     )
     return fig
 
@@ -223,9 +225,9 @@ def leg_til_yr_vind(fig, met_df, row=2, col=1):
     return fig
 
 def legg_til_yr_vindpiler(fig, met_df, row=2, col=1):
-    
+    print(met_df)
     for time, data in met_df.iterrows():
-        radian = data['Wind Direction'] * (pi / 180)
+        radian = math.radians(data['Wind Direction'])
         fig.add_annotation(
             x=time,
             y=0,  # Sett en passende y-posisjon for pilene dine
@@ -234,8 +236,8 @@ def legg_til_yr_vindpiler(fig, met_df, row=2, col=1):
             arrowsize=1,
             arrowwidth=1,
             arrowcolor='black',
-            ax=20 * cos(radian),
-            ay=20 * sin(radian),
+            ax=20 * sin(radian),
+            ay=-20 * cos(radian),
             row=row, col=col  #  * -1 Plotly's koordinatsystem er invertert for y
             )
     return fig
@@ -252,7 +254,7 @@ def legg_til_frost_vindpiler(fig, df_resampled, row, col):
             arrowwidth=1,
             arrowcolor='black',
             ax=20 * cos(radian),
-            ay=20 * sin(radian),
+            ay=-20 * sin(radian),
             row=row, col=col
         )
     return fig
@@ -274,10 +276,8 @@ def plotfunksjon_stasjon_ny(lat, lon, navn, altitude, stasjonsid, elements, dage
 
     fig = legg_til_yr_temperatur(fig, met_df)
 
-
     # Legg til Frost-data
     fig = legg_til_frost_temperatur(fig, samledf)
-
 
     if percipitation:
         fig = legg_til_frost_precipitation(fig, samledf, row=1, col=1)
@@ -289,7 +289,8 @@ def plotfunksjon_stasjon_ny(lat, lon, navn, altitude, stasjonsid, elements, dage
             tickfont=dict(size=12, color='blue'),
             row=1, col=1,
             secondary_y=True,
-            showgrid=False
+            showgrid=False,
+            range=[0, 8]
         )
 
     # Legg til vinddata, hvis tilgjengelig

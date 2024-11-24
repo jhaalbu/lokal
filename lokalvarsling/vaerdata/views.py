@@ -55,7 +55,7 @@ def stasjon_plot_view(request, stasjon_id):
         stasjonsdata = hent_stasjonsinfo(stasjon_id)
         # Sjekk hvilke typer sensorer vi skal inkludere
         percipitation = any('sum(precipitation_amount' in eid for eid in tilgjengelige_elementer)
-        wind = any('wind_speed' in eid and 'wind_from_direction' in eid for eid in tilgjengelige_elementer)
+        wind = any('wind_from_direction' in eid for eid in tilgjengelige_elementer)
         snow = any('surface_snow_thickness' in eid for eid in tilgjengelige_elementer)
 
         # Generer plottet basert på tilgjengelige sensorer
@@ -66,8 +66,8 @@ def stasjon_plot_view(request, stasjon_id):
             altitude=stasjonsdata['masl'],
             stasjonsid=stasjon_id,
             elements=tilgjengelige_elementer,
-            dager_etter_met=3,
-            dager_tidligere_frost=7,
+            dager_etter_met=2,
+            dager_tidligere_frost=5,
             percipitation=percipitation,
             wind=wind,
             snow=snow
@@ -83,8 +83,57 @@ def stasjon_plot_view(request, stasjon_id):
         return render(request, 'vaerdata/stasjon_plot.html', {'error': f"Feil ved henting av API-data: {e}"})
 
 
-@cache_page(60 * 5)
 def stasjon(request, stasjonid):
+    stasjon = get_object_or_404(Stasjon, kode=stasjonid)
+    client_id = 'b8b1793b-27ff-4f4d-a081-fcbcc5065b53'
+    client_secret = '7f24c0ca-ca82-4ed6-afcd-23e657c2e78c'
+    
+    api_url_observations = f"https://frost.met.no/observations/availableTimeSeries/v0.jsonld?sources=SN{stasjonid}&referencetime=2024-11-23"
+    # Hent data fra API
+    response_observations = requests.get(api_url_observations,auth=(client_id,client_secret)) 
+    response_observations.raise_for_status()
+    json_data_observations = response_observations.json()  # Parse JSON-responsen
+
+
+    
+    # Liste over elementer vi ønsker å sjekke
+    elements = [
+        'air_temperature',
+        'surface_snow_thickness',
+        'wind_speed',
+        'wind_from_direction',
+        'sum(precipitation_amount PT10M)'
+    ]
+    
+    # Finn hvilke elementer som er tilgjengelige
+    tilgjengelige_elementer = sjekk_element_ids(json_data_observations, elements)
+    stasjonsdata = hent_stasjonsinfo(stasjonid)
+    # Sjekk hvilke typer sensorer vi skal inkludere
+    percipitation = any('sum(precipitation_amount' in eid for eid in tilgjengelige_elementer)
+    wind = any('wind_from_direction' in eid for eid in tilgjengelige_elementer)
+    snow = any('surface_snow_thickness' in eid for eid in tilgjengelige_elementer)
+
+    # Generer plottet basert på tilgjengelige sensorer
+    fig = plotfunksjon_stasjon_ny(
+        lat=stasjonsdata['coordinates'][1],  # Eksempelkoordinater - bruk verdier fra stasjonen din
+        lon=stasjonsdata['coordinates'][0],
+        navn=stasjonsdata['name'],
+        altitude=stasjonsdata['masl'],
+        stasjonsid=stasjonid,
+        elements=tilgjengelige_elementer,
+        dager_etter_met=2,
+        dager_tidligere_frost=5,
+        percipitation=percipitation,
+        wind=wind,
+        snow=snow
+    )
+    fig_json = json.loads(fig.to_json())
+    return JsonResponse({
+        'fig_json': fig_json
+    })
+
+@cache_page(60 * 5)
+def stasjon_gammel(request, stasjonid):
     '''Funksjonen er ikkje optimal, bør ha bedre logikk for å finne ut kva type stasjon det er.'''
     stasjon = get_object_or_404(Stasjon, kode=stasjonid)
     altitude = stasjon.altitude
