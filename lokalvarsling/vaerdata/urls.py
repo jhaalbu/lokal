@@ -6,6 +6,7 @@ from . import views
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("enkelstasjon/<int:stasjon_id>/", views.stasjon_plot_view, name="stasjon_plot_view"),
     path("<str:omrade>/", views.lokaltest, name="lokaltest"),
     path("lokalvarsling/<str:omrade>/", views.lokalvarsling, name="lokalvarsling"),
     path("stasjon/<int:stasjonid>/", views.stasjon, name="stasjon"),

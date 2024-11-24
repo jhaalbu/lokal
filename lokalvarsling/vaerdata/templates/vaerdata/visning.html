@@ -2,6 +2,13 @@
 
 {% block content %}
 <div class="container mt-4">
+    <h2>Kart</h2>
+    <div class="row">
+        <div class="col-12">
+            <div id="map">
+                {{ kart|safe }}
+            </div>
+        </div>
     <h2>Værmeteogrammer</h2>
     <div class="row">
         {% for meteogram in metogrammer %}

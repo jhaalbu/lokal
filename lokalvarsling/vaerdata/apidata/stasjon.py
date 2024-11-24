@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from dateutil import parser, tz
 import pandas as pd
 import numpy as np
-
+import requests
+from django.core.cache import cache
 
 def frost_api(stasjonsid, dager_tidligere, elements, timeoffsets='PT0H'):
     """
@@ -75,11 +76,12 @@ def bearbeid_frost(df):
         'surface_snow_thickness': 'mean',
         'wind_speed': 'mean',
         'wind_from_direction': 'mean',
-        'sum(precipitation_amount PT10M)': 'sum'
+        'sum(precipitation_amount PT10M)': 'sum',
+        'sum(precipitation_amount PT1H)': 'sum'
     }
 
     # Group by 'elementId' and 'referenceTime', then resample and apply the operation for each group
-    df_resampled = df.groupby('elementId').resample('H', on='referenceTime').agg({
+    df_resampled = df.groupby('elementId').resample('h', on='referenceTime').agg({
         'value': lambda group: group.agg(resampling_operations[group.name])
     })
     # Reset the index and replace NaN with None
@@ -161,4 +163,42 @@ def vindrose(stasjonsid, dager_tidligere):
 
     return pivot_df
 
+def hent_stasjonsinfo(stasjon_id):
+    """
+    Ekstraherer spesifikke felt fra stasjonsdata i JSON-format.
+
+    Args:
+        json_data (dict): JSON-data fra API-et.
+
+    Returns:
+        dict: Et dictionary med ønskede felt.
+    """
+
+    client_id = 'b8b1793b-27ff-4f4d-a081-fcbcc5065b53'
+    client_secret = '7f24c0ca-ca82-4ed6-afcd-23e657c2e78c'
+
+    api_url_stasjonsdata = f"https://frost.met.no/sources/v0.jsonld?ids=SN{stasjon_id}&types=SensorSystem"
     
+    response_stasjonsdata = requests.get(api_url_stasjonsdata,auth=(client_id,client_secret)) 
+    response_stasjonsdata.raise_for_status()
+    json_data_stasjonsdata = response_stasjonsdata.json()  # Parse JSON-responsen
+    
+    # Sjekk om det er data i JSON-strukturen
+    data = json_data_stasjonsdata.get("data", [])
+   
+    if not data:
+        return None  # Returner None hvis det ikke er data
+
+    # Hent første element (hvis flere elementer finnes, kan det utvides)
+    stasjon = data[0]
+
+    # Ekstraher ønskede felt
+    stasjonsinfo = {
+        "name": stasjon.get("name"),
+        "shortName": stasjon.get("shortName"),
+        "masl": stasjon.get("masl"),
+        "stationHolder": stasjon.get("stationHolders", []),
+        "coordinates": stasjon.get("geometry", {}).get("coordinates", [])
+    }
+    print(stasjonsinfo)
+    return stasjonsinfo

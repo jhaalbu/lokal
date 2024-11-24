@@ -1,15 +1,89 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
+from django.views.decorators.cache import cache_page
 from .apidata.snowsense import hent_snowsense
 #from .apidata.vaerplot import met_stasjon_supblot, met_stasjon_supblot_u_nedbor, vaerplot, met_plot, vindrose_stasjon, met_og_ein_stasjon_plot, frost_samledf
 import json
 from .models import Omrade, Stasjon, Klimapunkt, Webkamera, Sensor, Metogram
-from .apidata.utils import utm_to_latlon
-from .apidata.plotfunksjoner import plotfunksjon_stasjon, vindrose_stasjon
+from .apidata.utils import utm_to_latlon, sjekk_element_ids
+from .apidata.plotfunksjoner import plotfunksjon_stasjon, vindrose_stasjon, plotfunksjon_stasjon_ny
+from .apidata.stasjon import hent_stasjonsinfo
+import requests
 
 
 # Create your views here.
+@cache_page(60 * 5)
+def stasjon_plot_view(request, stasjon_id):
+    """
+    Henter sensordata for en stasjon via et API og genererer riktig plott.
+    
+    Args:
+        request: Django HTTP Request.
+        stasjon_id: ID-en til stasjonen som skal plottes.
+    
+    Returns:
+        Django HttpResponse med et plott som HTML.
+    """
+
+    # Eksempel: URL til eksternt API for å hente sensordata
+    api_url_observations = f"https://frost.met.no/observations/availableTimeSeries/v0.jsonld?sources=SN{stasjon_id}&referencetime=2024-11-23"
+    
+    client_id = 'b8b1793b-27ff-4f4d-a081-fcbcc5065b53'
+    client_secret = '7f24c0ca-ca82-4ed6-afcd-23e657c2e78c'
+    
+    try:
+        # Hent data fra API
+        response_observations = requests.get(api_url_observations,auth=(client_id,client_secret)) 
+        response_observations.raise_for_status()
+        json_data_observations = response_observations.json()  # Parse JSON-responsen
+
+
+        
+        # Liste over elementer vi ønsker å sjekke
+        elements = [
+            'air_temperature',
+            'surface_snow_thickness',
+            'wind_speed',
+            'wind_from_direction',
+            'sum(precipitation_amount PT10M)'
+        ]
+        
+        # Finn hvilke elementer som er tilgjengelige
+        tilgjengelige_elementer = sjekk_element_ids(json_data_observations, elements)
+        print(f'tilgjengelige elementer: {tilgjengelige_elementer}')
+        stasjonsdata = hent_stasjonsinfo(stasjon_id)
+        # Sjekk hvilke typer sensorer vi skal inkludere
+        percipitation = any('sum(precipitation_amount' in eid for eid in tilgjengelige_elementer)
+        wind = any('wind_speed' in eid and 'wind_from_direction' in eid for eid in tilgjengelige_elementer)
+        snow = any('surface_snow_thickness' in eid for eid in tilgjengelige_elementer)
+
+        # Generer plottet basert på tilgjengelige sensorer
+        fig = plotfunksjon_stasjon_ny(
+            lat=stasjonsdata['coordinates'][1],  # Eksempelkoordinater - bruk verdier fra stasjonen din
+            lon=stasjonsdata['coordinates'][0],
+            navn=stasjonsdata['name'],
+            altitude=stasjonsdata['masl'],
+            stasjonsid=stasjon_id,
+            elements=tilgjengelige_elementer,
+            dager_etter_met=3,
+            dager_tidligere_frost=7,
+            percipitation=percipitation,
+            wind=wind,
+            snow=snow
+        )
+
+        # Gjør figuren klar for HTML-visning
+        plot_html = fig.to_html(full_html=False)
+
+        return render(request, 'vaerdata/stasjon_plot.html', {'plot_html': plot_html})
+
+    except requests.exceptions.RequestException as e:
+        # Håndter API-feil
+        return render(request, 'vaerdata/stasjon_plot.html', {'error': f"Feil ved henting av API-data: {e}"})
+
+
+@cache_page(60 * 5)
 def stasjon(request, stasjonid):
     '''Funksjonen er ikkje optimal, bør ha bedre logikk for å finne ut kva type stasjon det er.'''
     stasjon = get_object_or_404(Stasjon, kode=stasjonid)
@@ -21,7 +95,7 @@ def stasjon(request, stasjonid):
     lat, lon = utm_to_latlon(east, north, 33, 'N')
     stasjonstype = stasjon.beskrivelse
     sensor_names = [sensor.name for sensor in stasjon.sensor_elements.all()]
-
+ 
     #sett antall dager tidligere for frost
     dager_tidligere_frost = 4
     dager_etter_met = 2
@@ -50,15 +124,18 @@ def stasjon(request, stasjonid):
         return JsonResponse({
             'fig_json': fig_json
         })
-
-
-
+    elif stasjonstype == 'sno':
+        fig = plotfunksjon_stasjon(lat, lon, stasjon.navn, altitude, stasjonid, sensor_names, dager_etter_met, dager_tidligere_frost, wind=False, percipitation=True, snow=True)
+        fig_json = json.loads(fig.to_json())
+        return JsonResponse({
+            'fig_json': fig_json
+        })
     else:
         return JsonResponse({'message': 'Feil'})
 
 
 
-
+@cache_page(60 * 5)
 def lokaltest(request, omrade):
     omrade = get_object_or_404(Omrade, navn=omrade)
     #print(omrade)
