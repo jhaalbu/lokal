@@ -82,7 +82,7 @@ def stasjon_plot_view(request, stasjon_id):
         # Håndter API-feil
         return render(request, 'vaerdata/stasjon_plot.html', {'error': f"Feil ved henting av API-data: {e}"})
 
-
+@cache_page(60 * 5)
 def stasjon(request, stasjonid):
     stasjon = get_object_or_404(Stasjon, kode=stasjonid)
     client_id = 'b8b1793b-27ff-4f4d-a081-fcbcc5065b53'
