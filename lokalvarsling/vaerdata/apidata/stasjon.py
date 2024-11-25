@@ -94,7 +94,7 @@ def bearbeid_frost(df):
 
 def frost_samledf(df):
     df_pivot = df.pivot(index='referenceTime', columns='elementId', values='value')
-
+    df_pivot['accumulated_precipitation'] = df_pivot['sum(precipitation_amount PT10M)'].cumsum()
     return df_pivot
 
 

@@ -71,7 +71,7 @@ def sett_opp_fig_layout(precipitation=False, wind=False, snow=False):
         row_heights=row_heights,
         specs=specs
     )
-
+    
     # Konfigurer etiketter på rad 2 (vis kun hvis det finnes minst to rader)
     showticklabels_row2 = rows > 1
 
@@ -103,6 +103,40 @@ def legg_til_yr_precipitation(fig, met_df, row, col):
                 fgcolor='rgba(0, 0, 255, 0.8)'  # Farge på stripene
             )
         )
+    ), row=row, col=col, secondary_y=True)
+
+    return fig
+
+def legg_til_yr_kumulativ_precipitation(fig, met_df, row, col):
+
+    # Prepare custom hover text with the actual 'Cumulative Precipitation' values
+    hover_text = ['Kumulativ nedbør: {:.2f}'.format(p) for p in met_df['Cumulative Precipitation']]
+
+    fig.add_trace(go.Scatter(
+        x=met_df.index,
+        y=met_df['Cumulative Precipitation'],
+        mode='lines',
+        name='Kumulativ nedbør (YR)',
+        fill='tozeroy',
+        line=dict(color='rgba(50, 235, 216, 0.5)', dash='dot'),
+        fillcolor='rgba(50, 235, 216, 0.1)',
+        text=hover_text,  # Use custom text for hover
+        hoverinfo='text+x'
+    ), row=row, col=col, secondary_y=True)
+
+    return fig
+
+def leg_til_frost_kumulativ_precipitation(fig, samledf, row, col):
+
+
+    fig.add_trace(go.Scatter(
+        x=samledf.index,
+        y=samledf['accumulated_precipitation'],
+        mode='lines',
+        name='Kumulativ nedbør (Frost)',
+        fill='tozeroy',
+        line=dict(color='rgba(50, 235, 216, 0.5)', dash='dot'),
+        fillcolor='rgba(50, 235, 216, 0.1)'
     ), row=row, col=col, secondary_y=True)
 
     return fig
@@ -225,7 +259,6 @@ def leg_til_yr_vind(fig, met_df, row=2, col=1):
     return fig
 
 def legg_til_yr_vindpiler(fig, met_df, row=2, col=1):
-    print(met_df)
     for time, data in met_df.iterrows():
         radian = math.radians(data['Wind Direction'])
         fig.add_annotation(
@@ -267,6 +300,7 @@ def plotfunksjon_stasjon_ny(lat, lon, navn, altitude, stasjonsid, elements, dage
     met_df = hent_yr_data(lat, lon, navn, altitude, dager_etter_met, user_agent)
     samledf = hent_frost_data(stasjonsid, dager_tidligere_frost, elements)
     df_resampled = samledf.resample('3h').mean()
+    print(samledf)
     met_df_resampled = met_df.resample('3h').mean()
 
     # Sett opp plottet
@@ -282,6 +316,8 @@ def plotfunksjon_stasjon_ny(lat, lon, navn, altitude, stasjonsid, elements, dage
     if percipitation:
         fig = legg_til_frost_precipitation(fig, samledf, row=1, col=1)
         fig = legg_til_yr_precipitation(fig, met_df, row=1, col=1)
+        #legg_til_yr_kumulativ_precipitation(fig, met_df, row=1, col=1)
+        #leg_til_frost_kumulativ_precipitation(fig, samledf, row=1, col=1)
             # Oppdater y-aksen for nedbør
         fig.update_yaxes(
             title_text="Nedbør (mm)",
