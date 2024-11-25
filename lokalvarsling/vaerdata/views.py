@@ -13,7 +13,7 @@ import requests
 
 
 # Create your views here.
-@cache_page(60 * 5)
+@cache_page(60 * 15)
 def stasjon_plot_view(request, stasjon_id):
     """
     Henter sensordata for en stasjon via et API og genererer riktig plott.
@@ -82,7 +82,7 @@ def stasjon_plot_view(request, stasjon_id):
         # Håndter API-feil
         return render(request, 'vaerdata/stasjon_plot.html', {'error': f"Feil ved henting av API-data: {e}"})
 
-@cache_page(60 * 5)
+@cache_page(60 * 15)
 def stasjon(request, stasjonid):
     stasjon = get_object_or_404(Stasjon, kode=stasjonid)
     client_id = 'b8b1793b-27ff-4f4d-a081-fcbcc5065b53'
@@ -132,7 +132,7 @@ def stasjon(request, stasjonid):
         'fig_json': fig_json
     })
 
-@cache_page(60 * 5)
+@cache_page(60 * 15)
 def stasjon_gammel(request, stasjonid):
     '''Funksjonen er ikkje optimal, bør ha bedre logikk for å finne ut kva type stasjon det er.'''
     stasjon = get_object_or_404(Stasjon, kode=stasjonid)
@@ -184,7 +184,7 @@ def stasjon_gammel(request, stasjonid):
 
 
 
-@cache_page(60 * 5)
+@cache_page(60 * 15)
 def lokaltest(request, omrade):
     omrade = get_object_or_404(Omrade, navn=omrade)
     #print(omrade)
