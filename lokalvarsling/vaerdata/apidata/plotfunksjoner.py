@@ -6,6 +6,59 @@ import math
 from metno_locationforecast import Place, Forecast
 from .met import metno_forecast_to_dataframe
 from .stasjon import frost_api, vindrose, bearbeid_frost, frost_samledf, hent_stasjonsinfo
+from .griddata import klima_dataframe
+
+PARAMETERS = {
+    "rr": "Døgnnedbør",
+    "rr3h": "Nedbør 3 timer",
+    "rrl": "Regn",
+    "rrprrxrm5": "Nedbør i % av 5 år",
+    "tm": "Temperatur",
+    "tm3h": "Temperatur 3 timer",
+    "tmgr": "Temperaturendring",
+    "swe": "Snømengde",
+    "swepr": "Snømengde i prosent", 
+    "swechange7d": "Snø endring siste uke",
+    "swerank": "Snømengde rangert",
+    "snowload": "Snølast",
+    "age": "Snøens alder",
+    "lwc": "Snøtilstand",
+    "fsw": "Nysnø siste døgn",
+    "fsw7d": "Nysnø siste uke",
+    "sdfsw": "Nysnødybde",
+    "sdfsw7d": "Nysnødybde 7 døgn",
+    "sdfsw3d": "Nysnødybde 3 døgn",
+    "additional_snow_depth": "Fokksnøindeks",
+    "qsw": "Snøsmelting siste døgn",
+    "qsw7d": "Snøsmelting sum siste uke",
+    "qtt": "Regn og snøsmelting",
+    "qtt7d": "Regn og snøsmelting siste uke",
+    "qttls": "Vanntilførsel",
+    "qtt3dls": "Vanntilførsel 3 døgn",
+    "gwb_qtt": "HBV Vanntilførsel",
+    "gwb_qtt3d": "HBV Vanntilførsel 3 døgn",
+    "gwb_qtt3dlst": "Vanntilførsel 3 døgn",
+    "gwb_qttprrxm200": "Vanntilførsel 1 døgn i % av 200 år",
+    "gwb_qtt3dprrxm200": "Vanntilførsel 3 døgn i % av 200 år",
+    "gwb_qttprgwb_qttyxrx30yr": "Vanntilførsel 1 døgn i % maks",
+    "gwb_qtt3dprgwb_qtt3dxyrx30yr": "Vanntilførsel 3 døgn i % maks",
+    "gwb_gwt": "Grunnvann",
+    "gwb_gwtdev": "Døgnendring grunnvann",
+    "gwb_gtwtyxrx30yr": "Grunnvann i % av maksimum",
+    "gwb_q": "Avrenning",
+    "gwb_qprgwb_qxyxrx30yr": "Avrenning i % av maksimum",
+    "gwb_eva": "Fordamping",
+    "gwb_sssdev": "Jordas vannkapasitet",
+    "gwb_frd": "Teledyb",
+    "gwb_sssrel": "Vannmetning",
+    "gwb_landslideindex1": "Jordskredindeks1",
+    "gwb_landslideindex2": "Jordskredindeks2",
+    "indDirection10m3h": "Vindretning 10m 3 timer",
+    "windSpeed10m24h06": "Vindhastighet 10m døgn",
+    "windSpeed10m3h": "Vindhastighet 10m 3 timer",
+    "qsweenergy": "Snøsmelting fra energibalanse modell",
+    "qsweenergy3h": "Snøsmelting 3 timer fra energibalanse modell"
+    }
 
 user_agent = "Stedspesifikk v/0.1 jan.helge.aalbu@vegvesen.no"
 
@@ -325,6 +378,7 @@ def plotfunksjon_stasjon_ny(lat, lon, navn, altitude, stasjonsid, elements, dage
             tickfont=dict(size=12, color='blue'),
             row=1, col=1,
             secondary_y=True,
+            overlaying="y",
             showgrid=False,
             range=[0, 8]
         )
@@ -352,43 +406,136 @@ def plotfunksjon_stasjon_ny(lat, lon, navn, altitude, stasjonsid, elements, dage
 
     return fig
 
-def plotfunksjon_stasjon2(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met, dager_tidligere_frost, 
-                         percipitation=False, wind=False, snow=False):
-    # Hent og bearbeid data
-    met_df = hent_yr_data(lat, lon, navn, altitude, dager_etter_met, user_agent)
-    samledf = hent_frost_data(stasjonsid, dager_tidligere_frost, elements)
-    df_resampled = samledf.resample('3h').mean()
 
-    # Sett opp plottet
-    fig, plotheight, showticklabels_row2 = sett_opp_fig_layout(wind=wind, snow=snow)
+def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "tm", "lwc", "fsw", "fsw7d", "sdfsw", "sdfsw7d", "sdfsw3d"]):
+    print('plotfunksjon starter')
 
-    fig.update_xaxes(showticklabels=False, showgrid=True, row=1, col=1)
-    if showticklabels_row2:
-        fig.update_xaxes(showticklabels=True, showgrid=True, row=2, col=1)
+    df = klima_dataframe(x, y, startdato, sluttdato, parametere)
+    print(df)     
 
-    # Legg til YR-data
-    fig = legg_til_yr_nedbor(fig, met_df, precipitation_color='rgba(0, 123, 255, 0.8)')
-    fig = legg_til_yr_temperatur(fig, met_df)
-
-    # Legg til Frost-data
-    fig = legg_til_frost_temperatur(fig, samledf)
-
-    # Legg til vindpiler
-    fig = legg_til_vindpiler(fig, df_resampled, radian_key='wind_from_direction', row=2, col=1)
-
-    # Oppdater layout
-    fig.update_layout(
-        title={
-            'text': f"{navn} - {altitude} moh. - ID: {stasjonsid}",
-            'y': 0.9, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top'
-        },
-        title_font=dict(family="Arial, sans-serif", size=24, color="black"),
-        width=900, height=plotheight, showlegend=False
+    # Lag subplots
+    fig = make_subplots(
+        rows=3, cols=1,
+        row_heights = [0.5, 0.25, 0.3],
+        specs = [[{"secondary_y": True}], [{"secondary_y": True}], [{"secondary_y": False}]],
+        shared_xaxes=True,
+        vertical_spacing=0.01
     )
+
+    for i in range(len(df) - 1):
+        color = 'red' if df['tm'][i] >= 0 else 'blue'
+        fig.add_trace(go.Scatter(x=df.index[i:i+2], y=df['tm'][i:i+2], 
+                                 mode='lines', line=dict(color=color, width=2), 
+                                 showlegend=False), row=1, col=1)
+    
+    fig.update_yaxes(
+        title_text="Temperatur (°C)",
+        title_font=dict(size=12, color='red'),
+        tickfont=dict(size=12, color='red'),
+        showgrid=True,
+        range=[df['tm'].min() - 2, df['tm'].max() + 2],  # Temperatur-intervall
+        row=1, col=1,
+        secondary_y=False
+    )
+
+    # Oppdater y-akse for nedbør (sekundærakse)
+    fig.update_yaxes(
+        title_text="Nedbør (mm)",
+        title_font=dict(size=12, color='blue'),
+        tickfont=dict(size=12, color='blue'),
+        showgrid=False,
+        overlaying="y",
+        side="right",
+        range=[0, df[['rrl', 'fsw']].max().max() + 2],  # Maks av 'rrl' og 'fsw'
+        row=1, col=1,
+        secondary_y=True
+    )
+
+    # Legg til temperatur (linje)
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=df.index,
+    #         y=df["tm"],
+    #         mode="lines",
+    #         name=PARAMETERS["tm"],
+    #         line=dict(color="red"),
+    #     ),
+    #     row=1, col=1, secondary_y=False
+    # )
+
+    # Legg til regn (søyle)
+    fig.add_trace(
+        go.Bar(
+            x=df.index,
+            y=df["rrl"],
+            name=PARAMETERS["rrl"],
+            marker_color="green"
+        ),
+        row=1, col=1, secondary_y=True
+    )
+
+    # Legg til snø (søyle)
+    fig.add_trace(
+        go.Bar(
+            x=df.index,
+            y=df["fsw"],
+            name=PARAMETERS["fsw"],
+            marker_color="purple"
+        ),
+        row=1, col=1, secondary_y=True
+    )
+
+    # Andre subplot: Nysnødybde 3 døgn (søyler) og Nysnødybde 7 døgn (linje)
+    fig.add_trace(
+        go.Bar(
+            x=df.index,
+            y=df["sdfsw3d"],
+            name=PARAMETERS["sdfsw3d"],
+            marker_color="orange"
+        ),
+        row=2, col=1
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df["sdfsw7d"],
+            mode="lines",
+            name=PARAMETERS["sdfsw7d"],
+            line=dict(color="red")
+        ),
+        row=2, col=1
+    )
+
+    # Tredje subplot: Snøtilstand (linje)
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df["lwc"],
+            mode="lines",
+            name=PARAMETERS["lwc"],
+            line=dict(color="brown")
+        ),
+        row=3, col=1
+    )
+
+    # Oppsett av aksene og layout
+    fig.update_layout(
+        title="Værdata",
+        height=800,
+        showlegend=False,
+        legend_title="Parametere",
+    )
+
+    # Separate y-akser der det er nødvendig
+    # fig.update_yaxes(title_text=PARAMETERS["tm"], row=1, col=1, secondary_y=False)
+    # fig.update_yaxes(title_text=f"{PARAMETERS['rrl']} og {PARAMETERS['fsw']}", row=1, col=1, secondary_y=True)
+    # fig.update_yaxes(title_text=f"{PARAMETERS['sdfsw3d']} og {PARAMETERS['sdfsw7d']}", row=2, col=1)
+    # fig.update_yaxes(title_text=PARAMETERS["lwc"], row=3, col=1)
 
     return fig
 
 def plotfunksjon_stasjon(lat, lon, navn, altitude, stasjonsid, elements, dager_etter_met, dager_tidligere_frost, percipitation=False, wind=False, snow=False, ):   
+    '''Denne funksjonen er kunn til bruk for testing, brukes ikkje i produksjon'''
     # Henter data fra YR for ein gitt koordinat
     vaer = Place(navn, lat, lon, altitude)
     vaer_forecast = Forecast(vaer, user_agent)

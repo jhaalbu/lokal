@@ -7,12 +7,34 @@ from .apidata.snowsense import hent_snowsense
 import json
 from .models import Omrade, Stasjon, Klimapunkt, Webkamera, Sensor, Metogram
 from .apidata.utils import utm_to_latlon, sjekk_element_ids
-from .apidata.plotfunksjoner import plotfunksjon_stasjon, vindrose_stasjon, plotfunksjon_stasjon_ny
+from .apidata.plotfunksjoner import plotfunksjon_stasjon, vindrose_stasjon, plotfunksjon_stasjon_ny, plotfunksjon_griddata
 from .apidata.stasjon import hent_stasjonsinfo
+from datetime import datetime, timedelta
+
 import requests
 
 
 # Create your views here.
+
+def grid_plot_view(request, x, y):
+    i_dag = datetime.now()
+    startdato = i_dag - timedelta(days=10)
+    startdato = startdato.strftime('%Y-%m-%d')
+    sluttdato = i_dag + timedelta(days=7)
+    sluttdato = sluttdato.strftime('%Y-%m-%d')
+    print(startdato)
+    #try:
+    fig = plotfunksjon_griddata(x, y, startdato, sluttdato)
+    print('fig klar i views')
+    # Gjør figuren klar for HTML-visning
+    plot_html = fig.to_html(full_html=False)
+
+    return render(request, 'vaerdata/gridplot.html', {'plot_html': plot_html})
+
+    #except requests.exceptions.RequestException as e:
+        # Håndter API-feil
+    #    return render(request, 'vaerdata/gridplot.html', {'error': f"Feil ved henting av API-data: {e}"})
+
 @cache_page(60 * 15)
 def stasjon_plot_view(request, stasjon_id):
     """
