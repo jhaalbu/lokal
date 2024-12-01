@@ -6,7 +6,7 @@ import math
 from metno_locationforecast import Place, Forecast
 from .met import metno_forecast_to_dataframe
 from .stasjon import frost_api, vindrose, bearbeid_frost, frost_samledf, hent_stasjonsinfo
-from .griddata import klima_dataframe
+from .griddata import klima_dataframe, hent_hogde, stedsnavn
 
 PARAMETERS = {
     "rr": "Døgnnedbør",
@@ -53,7 +53,8 @@ PARAMETERS = {
     "gwb_sssrel": "Vannmetning",
     "gwb_landslideindex1": "Jordskredindeks1",
     "gwb_landslideindex2": "Jordskredindeks2",
-    "indDirection10m3h": "Vindretning 10m 3 timer",
+    "windDirection10m24h06": "Vindretning 10m døgn",
+    "windDirection10m3h": "Vindretning 10m 3 timer",
     "windSpeed10m24h06": "Vindhastighet 10m døgn",
     "windSpeed10m3h": "Vindhastighet 10m 3 timer",
     "qsweenergy": "Snøsmelting fra energibalanse modell",
@@ -401,23 +402,28 @@ def plotfunksjon_stasjon_ny(lat, lon, navn, altitude, stasjonsid, elements, dage
             'y': 0.9, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top'
         },
         title_font=dict(family="Arial, sans-serif", size=24, color="black"),
-        width=900, height=plotheight, showlegend=False
+        autosize=True, height=plotheight, showlegend=False
     )
 
     return fig
 
 
-def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "tm", "lwc", "fsw", "fsw7d", "sdfsw", "sdfsw7d", "sdfsw3d"]):
+def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "tm", "lwc", "fsw", "fsw7d", "sdfsw", "sdfsw7d", "sdfsw3d", "windDirection10m24h06", "windSpeed10m24h06"]):
     print('plotfunksjon starter')
 
     df = klima_dataframe(x, y, startdato, sluttdato, parametere)
+    altitude = hent_hogde(x, y)
     print(df)     
-
+    try:
+        sted = stedsnavn(x, y)
+    except:
+        sted = ' '
+        
     # Lag subplots
     fig = make_subplots(
-        rows=3, cols=1,
-        row_heights = [0.5, 0.25, 0.3],
-        specs = [[{"secondary_y": True}], [{"secondary_y": True}], [{"secondary_y": False}]],
+        rows=4, cols=1,
+        row_heights = [0.4, 0.2, 0.2, 0.2],
+        specs = [[{"secondary_y": True}], [{"secondary_y": True}], [{"secondary_y": False}], [{"secondary_y": False}]],
         shared_xaxes=True,
         vertical_spacing=0.01
     )
@@ -430,8 +436,8 @@ def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "
     
     fig.update_yaxes(
         title_text="Temperatur (°C)",
-        title_font=dict(size=12, color='red'),
-        tickfont=dict(size=12, color='red'),
+        title_font=dict(size=12, color='black'),
+        tickfont=dict(size=12, color='black'),
         showgrid=True,
         range=[df['tm'].min() - 2, df['tm'].max() + 2],  # Temperatur-intervall
         row=1, col=1,
@@ -441,27 +447,46 @@ def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "
     # Oppdater y-akse for nedbør (sekundærakse)
     fig.update_yaxes(
         title_text="Nedbør (mm)",
-        title_font=dict(size=12, color='blue'),
-        tickfont=dict(size=12, color='blue'),
+        title_font=dict(size=12, color='black'),
+        tickfont=dict(size=12, color='black'),
         showgrid=False,
         overlaying="y",
         side="right",
-        range=[0, df[['rrl', 'fsw']].max().max() + 2],  # Maks av 'rrl' og 'fsw'
+        range=[-2, df[['rrl', 'fsw']].max().max() + 2],  # Maks av 'rrl' og 'fsw'
         row=1, col=1,
         secondary_y=True
     )
 
-    # Legg til temperatur (linje)
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=df.index,
-    #         y=df["tm"],
-    #         mode="lines",
-    #         name=PARAMETERS["tm"],
-    #         line=dict(color="red"),
-    #     ),
-    #     row=1, col=1, secondary_y=False
-    # )
+    fig.update_yaxes(
+        title_text="Nysnødybde (cm)",
+        title_font=dict(size=12, color='black'),
+        tickfont=dict(size=12, color='black'),
+        showgrid=True,
+        range=[-2, df[['sdfsw7d', 'sdfsw3d']].max().max() + 2],
+        row=2, col=1,
+        secondary_y=False
+    )
+
+    fig.update_yaxes(
+        title_text="Snøtilstand <br> (% fritt vann)",
+        title_font=dict(size=12, color='black'),
+        tickfont=dict(size=12, color='black'),
+        showgrid=True,
+        range=[-2, 12],
+        row=3, col=1,
+        secondary_y=False
+    )
+
+    fig.update_yaxes(
+        title_text="Vindhastighet (m/s)",
+        title_font=dict(size=12, color='black'),
+        tickfont=dict(size=12, color='black'),
+        showgrid=True,
+        range=[0, df['windSpeed10m24h06'].max() * 1.5],
+        row=4, col=1,
+        secondary_y=False
+    )
+
 
     # Legg til regn (søyle)
     fig.add_trace(
@@ -469,7 +494,8 @@ def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "
             x=df.index,
             y=df["rrl"],
             name=PARAMETERS["rrl"],
-            marker_color="green"
+            marker_color='rgba(0, 123, 255, 0.8)',
+            width=1000 * 3600 * 24 / 2,
         ),
         row=1, col=1, secondary_y=True
     )
@@ -480,7 +506,8 @@ def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "
             x=df.index,
             y=df["fsw"],
             name=PARAMETERS["fsw"],
-            marker_color="purple"
+            marker_color='rgba(120, 200, 230, 0.8)',
+            width=1000 * 3600 * 24 / 2,
         ),
         row=1, col=1, secondary_y=True
     )
@@ -491,7 +518,8 @@ def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "
             x=df.index,
             y=df["sdfsw3d"],
             name=PARAMETERS["sdfsw3d"],
-            marker_color="orange"
+            marker_color='rgba(120, 200, 230, 0.8)',
+            width=1000 * 3600 * 24 / 2,
         ),
         row=2, col=1
     )
@@ -501,7 +529,7 @@ def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "
             y=df["sdfsw7d"],
             mode="lines",
             name=PARAMETERS["sdfsw7d"],
-            line=dict(color="red")
+            line=dict(color='rgba(120, 200, 230, 0.8)')
         ),
         row=2, col=1
     )
@@ -520,17 +548,47 @@ def plotfunksjon_griddata(x, y, startdato, sluttdato, parametere=["rr", "rrl", "
 
     # Oppsett av aksene og layout
     fig.update_layout(
-        title="Værdata",
+        title=f"Griddata for {sted} ({x}, {y}) - {altitude} moh.",
         height=800,
         showlegend=False,
         legend_title="Parametere",
     )
 
-    # Separate y-akser der det er nødvendig
-    # fig.update_yaxes(title_text=PARAMETERS["tm"], row=1, col=1, secondary_y=False)
-    # fig.update_yaxes(title_text=f"{PARAMETERS['rrl']} og {PARAMETERS['fsw']}", row=1, col=1, secondary_y=True)
-    # fig.update_yaxes(title_text=f"{PARAMETERS['sdfsw3d']} og {PARAMETERS['sdfsw7d']}", row=2, col=1)
-    # fig.update_yaxes(title_text=PARAMETERS["lwc"], row=3, col=1)
+    fig.update_layout(
+        title={
+            'text': f"Griddata for {sted} ({x}, {y}) - {altitude} moh.",
+            'y': 0.9, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top'
+        },
+        title_font=dict(family="Arial, sans-serif", size=24, color="black"),
+        autosize=True, height=700, showlegend=False
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df["windSpeed10m24h06"],
+            mode="lines",
+            name=PARAMETERS["windSpeed10m24h06"],
+            line=dict(color="purple")
+        ),
+        row=4, col=1
+    )
+
+    for time, row_data in df.iterrows():
+        radian = math.radians(row_data['windDirection10m24h06'] - 90)
+        fig.add_annotation(
+            x=time,
+            y=0,  # Sett en passende y-posisjon for pilene
+            showarrow=True,
+            arrowhead=1,
+            arrowsize=1,
+            arrowwidth=1,
+            arrowcolor='black',
+            ax=20 * cos(radian),
+            ay=20 * sin(radian),
+            row=4, col=1
+        )
+
 
     return fig
 

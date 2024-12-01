@@ -35,6 +35,22 @@ def grid_plot_view(request, x, y):
         # Håndter API-feil
     #    return render(request, 'vaerdata/gridplot.html', {'error': f"Feil ved henting av API-data: {e}"})
 
+def gridpunkt(request, x, y):
+    i_dag = datetime.now()
+    startdato = i_dag - timedelta(days=10)
+    startdato = startdato.strftime('%Y-%m-%d')
+    sluttdato = i_dag + timedelta(days=7)
+    sluttdato = sluttdato.strftime('%Y-%m-%d')
+    print(startdato)
+    #try:
+    fig = plotfunksjon_griddata(x, y, startdato, sluttdato)
+    print('fig klar i views')
+    # Gjør figuren klar for HTML-visning
+    fig_json = json.loads(fig.to_json())
+    return JsonResponse({
+        'fig_json': fig_json
+    })
+
 @cache_page(60 * 15)
 def stasjon_plot_view(request, stasjon_id):
     """
@@ -104,7 +120,7 @@ def stasjon_plot_view(request, stasjon_id):
         # Håndter API-feil
         return render(request, 'vaerdata/stasjon_plot.html', {'error': f"Feil ved henting av API-data: {e}"})
 
-@cache_page(60 * 15)
+#@cache_page(60 * 15)
 def stasjon(request, stasjonid):
     stasjon = get_object_or_404(Stasjon, kode=stasjonid)
     client_id = 'b8b1793b-27ff-4f4d-a081-fcbcc5065b53'
@@ -154,7 +170,7 @@ def stasjon(request, stasjonid):
         'fig_json': fig_json
     })
 
-@cache_page(60 * 15)
+#@cache_page(60 * 15)
 def stasjon_gammel(request, stasjonid):
     '''Funksjonen er ikkje optimal, bør ha bedre logikk for å finne ut kva type stasjon det er.'''
     stasjon = get_object_or_404(Stasjon, kode=stasjonid)
@@ -206,7 +222,7 @@ def stasjon_gammel(request, stasjonid):
 
 
 
-@cache_page(60 * 15)
+#@cache_page(60 * 15)
 def lokaltest(request, omrade):
     omrade = get_object_or_404(Omrade, navn=omrade)
     #print(omrade)
@@ -214,21 +230,31 @@ def lokaltest(request, omrade):
     webkameraer = omrade.webkameraer.all()
     stasjoner = omrade.stasjoner.all()
     vindroser = omrade.vindroser.all()
+    klimapunkter = omrade.klimapunkter.all()
+    for klimapunkt in klimapunkter:
+        print(f'klimapunkt: {klimapunkt.koordinater}')
     #print(f'stasjoner  {stasjoner}')
     ploturls = []
-    ploturls__vindrose = []
+    ploturls_vindrose = []
+    ploturls_grid = []
     for stasjon in stasjoner:
         #print(f'stasjonskode: {stasjon.kode}')
         plot_url = reverse('stasjon', args=[stasjon.kode])  # Genererer URL basert på stasjonens kode
         ploturls.append(request.build_absolute_uri(plot_url))  # Legger til fullstendig URL inkludert domene
         ploturl_vind = reverse('vindrose_stasjon_data', args=[stasjon.kode])
-        ploturls__vindrose.append(request.build_absolute_uri(ploturl_vind))
+        ploturls_vindrose.append(request.build_absolute_uri(ploturl_vind))
         #print(f'ploturls_vind: {ploturls__vindrose}')
+    for klimapunkt in klimapunkter:
+        x, y = klimapunkt.koordinater.split(", ")
+        plot_url = reverse('gridpunkt', args=[x, y])
+        ploturls_grid.append(request.build_absolute_uri(plot_url))
+        print(f'ploturls_grid: {ploturls_grid}')
     return render(request, 'vaerdata/visning.html', {
         'metogrammer': metogrammer,
         'webkameraer': webkameraer,
         'ploturls': ploturls,
-        'ploturls__vindrose' : ploturls__vindrose,
+        'ploturls_vindrose' : ploturls_vindrose,
+        'ploturls_grid': ploturls_grid,
     })
 
 def lokalvarsling(request, omrade):

@@ -146,3 +146,46 @@ def klima_dataframe(x, y, startdato, sluttdato, parametere) -> pd.DataFrame:
     df[df > 1000] = 0 #Kutter ut verdier som er større enn 1000, opprydding
     return df
 
+def hent_hogde(x: str, y: str) -> str:
+    """Henter ned høgdeverdi for koordinat fra NVE api
+
+    Parameters
+    ----------
+        x
+            øst-vest koordinat (i UTM33)
+        y
+            nord-sør koordinat (i UTM33)
+
+    Returns
+    ----------
+        høgde
+            høgdeverdi for koordinat
+
+    """
+
+    return str(nve_api(x, y, '01-01-2022', '01-01-2022', 'rr') ['Altitude'])
+
+def stedsnavn(x: str, y: str) -> list:
+    """Henter stedsnavn fra geonorge api for stedsnavnsøk
+    
+    Koordinatsystem er hardcoda inn i request streng sammen med søkeradius
+    Radius er satt til 500m
+
+    Parameters
+    ----------
+        x
+            øst koordinat i UTM33
+        y
+            nord koordinat i UTM33
+
+    Returns
+    ----------
+        verier
+            Liste med stedsnavn innanfor radius på 500m
+
+    """
+    url = f"https://ws.geonorge.no/stedsnavn/v1/punkt?nord={y}&ost={x}&koordsys=5973&radius=500&utkoordsys=4258&treffPerSide=1&side=1"
+    r = requests.get(url)
+    verdier = r.json()
+    # for verdi in
+    return verdier["navn"][0]["stedsnavn"][0]["skrivemåte"]

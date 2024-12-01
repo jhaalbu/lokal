@@ -1,3 +1,21 @@
+<style>
+    .grid-container {
+        display: flex;
+        flex-wrap: wrap; /* Tillater at elementer hopper til neste linje */
+        gap: 1rem; /* Avstand mellom elementer */
+    }
+
+    .plot-wrapper {
+        flex: 1 1 700px; /* Element tar opp minst 700px eller deler tilgjengelig plass */
+        max-width: 100%; /* Sikrer at elementene ikke går utover skjermen */
+    }
+
+    .plot-container {
+        width: 100%; /* Plot tar hele bredden av wrapper */
+        height: 100%; /* Sikrer proporsjonalt skalering */
+    }
+</style>
+
 {% extends 'vaerdata/base.html' %}
 
 {% block content %}
@@ -9,45 +27,64 @@
                 {{ kart|safe }}
             </div>
         </div>
+    </div> <!-- Lukkende div for rad -->
+
     <h2>Webkamera Bilder</h2>
     <div class="row">
-        {% for bilde in webkameraer %}
-        <div class="col-lg-6 col-md-4 col-lg-3 mb-4">
-            <a href="{{ bilde.url }}">
-                <img src="{{ bilde.url }}" class="img-fluid" alt="Webkamera Bilde">
-            </a>
-        </div>
-        {% endfor %}
+        {% if webkameraer %}
+            {% for bilde in webkameraer %}
+            <div class="col-lg-6 col-md-4 col-lg-3 mb-4">
+                <a href="{{ bilde.url }}">
+                    <img src="{{ bilde.url }}" class="img-fluid" alt="Webkamera Bilde">
+                </a>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>Ingen webkamerabilder tilgjengelig.</p>
+        {% endif %}
     </div>
+
     <h2>Værmeteogrammer</h2>
     <div class="row">
-        {% for meteogram in metogrammer %}
-        <div class="col-lg-6 col-md-4 col-lg-3 mb-4">
-            <img src="{{ meteogram.url }}" class="img-fluid" alt="Meteogram">
-        </div>
-        {% endfor %}
+        {% if metogrammer %}
+            {% for meteogram in metogrammer %}
+            <div class="col-lg-6 col-md-4 col-lg-3 mb-4">
+                <img src="{{ meteogram.url }}" class="img-fluid" alt="Meteogram">
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>Ingen meteogrammer tilgjengelig.</p>
+        {% endif %}
     </div>
 
     <h2>Værstasjonsplot</h2>
     <div class="row">
         {% for plot_url in ploturls %}
-        <div class="col-12 mb-4"> <!-- More responsive column sizes -->
+        <div class="col-12 mb-4"> <!-- Responsiv størrelse -->
             <div class="plot-container" data-plot-url="{{ plot_url }}"></div>
         </div>
         {% endfor %}
     </div>
 
-    <h2>Vindroser</h2>
+    <h2>Vindroser siste døgn</h2>
     <div class="row">
-        {% for ploturl__vindrose in ploturls__vindrose %}
-        <div class="col-lg-6 col-md-4 col-lg-3 mb-4"> <!-- More responsive column sizes -->
-            <div class="plot-container" data-plot-url="{{ ploturl__vindrose }}"></div>
+        {% for ploturl_vindrose in ploturls_vindrose %} 
+        <div class="col-lg-6 col-md-4 col-lg-3 mb-4">
+            <div class="plot-container" data-plot-url="{{ ploturl_vindrose }}"></div>
         </div>
         {% endfor %}
     </div>
 
+    <h2>Grid data</h2>
 
-</div>
+    <div class="row">
+        {% for plot_url_grid in ploturls_grid %}
+        <div class="col-12 mb-4"> <!-- Juster kolonner for bedre responsivitet -->
+            <div class="plot-container" data-plot-url="{{ plot_url_grid }}"></div>
+        </div>
+        {% endfor %}
+    </div>
+</div> 
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -56,7 +93,7 @@
             fetch(plotUrl)
                 .then(response => response.json())
                 .then(data => {
-                    Plotly.newPlot(container, data.fig_json);
+                    Plotly.newPlot(container, data.fig_json); // Sjekk at 'fig_json' finnes
                 });
         });
     });
